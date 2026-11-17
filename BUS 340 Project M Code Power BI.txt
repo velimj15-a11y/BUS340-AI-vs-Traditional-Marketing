@@ -1,0 +1,12 @@
+let
+  Source = Excel.Workbook(File.Contents("C:\Users\Raell\Downloads\AI vs. Traditional Advertisement Survey.xlsx"), null, true),
+  #"Navigation 1" = Source{[Item = "Survey Results", Kind = "Sheet"]}[Data],
+  #"Promoted headers" = Table.PromoteHeaders(#"Navigation 1", [PromoteAllScalars = true]),
+  #"Changed column type" = Table.TransformColumnTypes(#"Promoted headers", {{"Id", Int64.Type}, {"What is your age range?", type text}, {"How familiar are you with Artificial Intelligence (AI)?", type text}, {"How often do you purchase products like this?", type text}, {"How appealing is this advertisement?", Int64.Type}, {"How likely are you to purchase the product shown in this advertisement?", Int64.Type}, {"Column1", Int64.Type}, {"Advertisement Type", type text}}),
+  #"Renamed columns" = Table.RenameColumns(#"Changed column type", {{"Column1", "Ad Concincingness"}, {"Id", "Respondent ID"}, {"What is your age range?", "Age Group"}, {"How familiar are you with Artificial Intelligence (AI)?", "AI Familiarity"}, {"How often do you purchase products like this?", "Purchase Frequency"}, {"How appealing is this advertisement?", "Ad Appeal"}, {"How likely are you to purchase the product shown in this advertisement?", "Purchase Intention"}, {"Advertisement Type", "Ad Group"}}),
+  #"Changed column type 1" = Table.TransformColumnTypes(#"Renamed columns", {{"Respondent ID", type text}}),
+  #"Added custom" = Table.AddColumn(#"Changed column type 1", "New ID", each [Ad Group] & "-" & Text.From([Respondent ID])),
+  #"Removed columns" = Table.RemoveColumns(#"Added custom", {"Respondent ID"}),
+  #"Renamed columns 1" = Table.RenameColumns(#"Removed columns",{{"New ID", "Respondent ID"}, {"Ad Concincingness", "Ad Convincingness"}})
+in
+  #"Renamed columns 1"

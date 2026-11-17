@@ -1,0 +1,119 @@
+BUS 340 Term Group Project DAX Measures
+
+AI Average Purchase Intention = CALCULATE(AVERAGE('Survey Results'[Purchase Intention]),'Survey Results'[Ad Group] = "AI")
+
+Traditional Average Purchase Intention = CALCULATE(AVERAGE('Survey Results'[Purchase Intention]),'Survey Results'[Ad Group] ="Traditional")
+
+Purchase Intention Mean Difference = [AI Average Purchase Intention] - [Traditional Average Purchase Intention]
+
+AI Std. Dev. = 
+VAR RespondentCount =
+    [AI Respondent Count]
+RETURN
+    IF(
+        RespondentCount < 2,
+        BLANK(),
+        CALCULATE(
+            STDEV.S('Survey Results'[Purchase Intention]),
+            'Survey Results'[Ad Group] = "AI"
+        )
+    )
+
+Traditional Std. Dev. = 
+VAR RespondentCount =
+    [Traditional Respondent Count]
+RETURN
+    IF(
+        RespondentCount < 2,
+        BLANK(),
+        CALCULATE(
+            STDEV.S('Survey Results'[Purchase Intention]),
+            'Survey Results'[Ad Group] = "Traditional"
+        )
+    )
+
+AI Respondent Count = CALCULATE(DISTINCTCOUNT('Survey Results'[Respondent ID]),'Survey Results'[Ad Group] = "AI")
+
+Traditional Respondent Count = CALCULATE(DISTINCTCOUNT('Survey Results'[Respondent ID]),'Survey Results'[Ad Group] = "Traditional")
+
+T-Statistic = 
+VAR MeanDifference = [Purchase Intention Mean Difference]
+VAR AISD = [AI Std. Dev.]
+VAR TraditionalSD = [Traditional Std. Dev.]
+VAR AIN = [AI Respondent Count]
+VAR TraditionalN = [Traditional Respondent Count]
+
+VAR StandardError =
+    SQRT(
+        DIVIDE(AISD ^ 2, AIN) +
+        DIVIDE(TraditionalSD ^ 2, TraditionalN)
+    )
+
+RETURN
+    IF(
+        AIN >= 2 && TraditionalN >= 2,
+        DIVIDE(MeanDifference, StandardError),
+        BLANK()
+    )
+
+Degrees of Freedom = 
+VAR AISD = [AI Std. Dev.]
+VAR TraditionalSD = [Traditional Std. Dev.]
+VAR AIN = [AI Respondent Count]
+VAR TraditionalN = [Traditional Respondent Count]
+
+VAR AIVarianceTerm = DIVIDE(AISD ^ 2, AIN)
+VAR TraditionalVarianceTerm = DIVIDE(TraditionalSD ^ 2, TraditionalN)
+
+VAR Numerator =
+    (AIVarianceTerm + TraditionalVarianceTerm) ^ 2
+
+VAR Denominator =
+    DIVIDE(AIVarianceTerm ^ 2, AIN - 1) +
+    DIVIDE(TraditionalVarianceTerm ^ 2, TraditionalN - 1)
+
+RETURN
+    IF(
+        AIN >= 2 && TraditionalN >= 2,
+        DIVIDE(Numerator, Denominator),
+        BLANK()
+    )
+
+One-Tailed P-Value = 
+VAR TStatistic = [T-Statistic]
+VAR DegreesFreedom = [Degrees of Freedom]
+
+RETURN
+    IF(
+        ISBLANK(TStatistic) || ISBLANK(DegreesFreedom),
+        BLANK(),
+        1 - T.DIST(TStatistic, DegreesFreedom, TRUE())
+    )
+
+Hypothesis Decision = 
+VAR PValue = [One-Tailed P-Value]
+VAR Alpha = 0.05
+
+RETURN
+    IF(
+        ISBLANK(PValue),
+        "Insufficient Data",
+        IF(
+            PValue < Alpha,
+            "Reject H₀",
+            "Fail to Reject H₀"
+        )
+    )
+
+Hypothesis Explanation = 
+VAR PValue = [One-Tailed P-Value]
+RETURN
+    IF(
+        ISBLANK(PValue),
+        "Insufficient data to perform the hypothesis test.",
+        IF(
+            PValue < 0.05,
+            "Sufficient evidence that AI produces higher purchase intention.",
+            "Insufficient evidence that AI produces higher purchase intention."
+        )
+    )
